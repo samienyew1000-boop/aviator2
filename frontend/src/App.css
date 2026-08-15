@@ -1,0 +1,475 @@
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.65rem 0.85rem 0.75rem;
+  height: 100%;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 0 0 auto;
+}
+
+.brand-block {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.brand {
+  margin: 0;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(1.75rem, 4vw, 2.4rem);
+  letter-spacing: 0.04em;
+  color: var(--pink-hot);
+  line-height: 1;
+}
+
+.link {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.link.on {
+  color: var(--green);
+}
+
+.balance-block {
+  text-align: right;
+}
+
+.balance-block .label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.balance-block strong {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-block em {
+  font-style: normal;
+  color: var(--green);
+  font-size: 0.85rem;
+}
+
+.history-strip {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15rem 0;
+  scrollbar-width: thin;
+  flex: 0 0 auto;
+}
+
+.history-strip span {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.history-strip .x1 {
+  color: #f87171;
+}
+
+.history-strip .x2 {
+  color: var(--blue);
+}
+
+.history-strip .x10 {
+  color: #c084fc;
+}
+
+/* Game + bets share one fixed row — page itself does not scroll */
+.play-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 0.65rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.stage {
+  position: relative;
+  background: #0a0a0c;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  min-height: 0;
+  height: 100%;
+}
+
+.flight-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hud.waiting {
+  align-items: end;
+  padding-bottom: 12%;
+}
+
+.hud .mult {
+  font-family: 'Bebas Neue', 'Arial Narrow', Impact, sans-serif;
+  font-size: clamp(3.5rem, 11vw, 6.5rem);
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow:
+    0 0 28px rgba(120, 170, 255, 0.55),
+    0 0 60px rgba(80, 130, 220, 0.35),
+    0 4px 18px rgba(0, 0, 0, 0.65);
+  line-height: 1;
+}
+
+.hud .mult.crash {
+  color: #e11d2d;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.hud .mult.crash span {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: clamp(0.95rem, 2.4vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: none;
+}
+
+.wait {
+  text-align: center;
+  width: min(320px, 78%);
+  background: rgba(10, 12, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.wait p {
+  margin: 0 0 0.75rem;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.wait .bar {
+  height: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.wait .bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #e11d2d, #ff4d5e);
+  border-radius: inherit;
+  transition: width 0.1s linear;
+}
+
+/* Only this panel scrolls */
+.bets-feed {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.feed-head,
+.feed-cols {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.2fr;
+  gap: 0.35rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.feed-head {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.feed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.feed-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.feed-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.feed-list li {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.2fr;
+  gap: 0.35rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-list li.cashed_out {
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.feed-list li.lost .win {
+  color: var(--muted);
+}
+
+.feed-list .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-list .win {
+  color: var(--green);
+  text-align: right;
+}
+
+.feed-list .empty {
+  display: block;
+  color: var(--muted);
+  text-align: center;
+  padding: 1.5rem 0.75rem;
+}
+
+.bet-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  flex: 0 0 auto;
+}
+
+.bet-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.bet-panel.won {
+  border-color: rgba(52, 211, 153, 0.45);
+}
+
+.bet-panel.lost {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.bet-tabs {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.bet-tabs .active {
+  color: var(--text);
+}
+
+.amount-row {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  gap: 0.4rem;
+}
+
+.amount-row input,
+.auto-row input[type='number'] {
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text);
+  background: #111;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem;
+  width: 100%;
+}
+
+.amount-row button,
+.quick-amounts button {
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.amount-row button:disabled,
+.quick-amounts button:disabled,
+.btn:disabled,
+.auto-row input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+}
+
+.quick-amounts button {
+  padding: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.auto-row {
+  display: grid;
+  grid-template-columns: auto 1fr 90px;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.btn {
+  font: inherit;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  line-height: 1.1;
+}
+
+.btn span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.btn.bet {
+  background: linear-gradient(180deg, #34d399, #059669);
+  color: #04120a;
+}
+
+.btn.cash {
+  background: linear-gradient(180deg, #fb7185, #e11d48);
+  color: #fff;
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.btn.won {
+  background: rgba(52, 211, 153, 0.2);
+  color: var(--green);
+}
+
+.btn.lost {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
+
+.flash {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  flex: 0 0 auto;
+  min-height: 1.1em;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@media (max-width: 900px) {
+  .play-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) 180px;
+  }
+
+  .bets-feed {
+    height: 180px;
+  }
+}
+
+@media (max-width: 640px) {
+  .bet-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bet-panel {
+    padding: 0.5rem 0.65rem;
+  }
+
+  .auto-row {
+    display: none;
+  }
+}
