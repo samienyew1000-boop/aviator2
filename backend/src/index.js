@@ -6,6 +6,13 @@ import { GameEngine } from './game/GameEngine.js';
 import { verifyCrashPoint } from './game/provablyFair.js';
 
 const PORT = process.env.PORT || 3001;
+const CORS_ORIGINS = (
+  process.env.CORS_ORIGIN ||
+  'http://localhost:5173,http://127.0.0.1:5173'
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const app = express();
 app.use(cors());
@@ -14,7 +21,7 @@ app.use(express.json());
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: CORS_ORIGINS,
     methods: ['GET', 'POST'],
   },
 });

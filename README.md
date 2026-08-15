@@ -36,3 +36,18 @@ Each round generates a server seed. The crash point is derived via HMAC-SHA256. 
 - Live bets feed for the current round
 - Round history strip (color-coded multipliers)
 - Demo balance in **ETB** (matches common operator embeds)
+
+## Deploy (Netlify frontend)
+
+Netlify can host the **frontend only**. Socket.io needs a Node host (Render, Railway, Fly.io, etc.).
+
+1. Push this repo (includes `netlify.toml`).
+2. In Netlify: import the GitHub repo — build settings are already in `netlify.toml`.
+3. Deploy the backend separately, then set Netlify env:
+   - `VITE_SOCKET_URL` = your backend URL (e.g. `https://your-app.onrender.com`)
+4. On the backend host set:
+   - `CORS_ORIGIN` = your Netlify URL (e.g. `https://your-site.netlify.app`)
+5. Trigger a new Netlify deploy after setting `VITE_SOCKET_URL` (Vite bakes it in at build time).
+
+Without a successful frontend build publish (`frontend/dist`), Netlify shows **Page not found**.
+

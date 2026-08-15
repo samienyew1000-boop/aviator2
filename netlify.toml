@@ -1,0 +1,15 @@
+# Frontend-only deploy (Vite → dist).
+# Socket.io backend must be hosted separately; set VITE_SOCKET_URL in Netlify env.
+
+[build]
+  command = "npm ci --prefix frontend && npm run build --prefix frontend"
+  publish = "frontend/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback (also mirrored in frontend/public/_redirects)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
