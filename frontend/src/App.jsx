@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { API_URL } from './api.js';
+import { SOCKET_URL } from './api.js';
 import { useAuth } from './AuthContext.jsx';
 import BetPanel from './components/BetPanel.jsx';
 import BetsFeed from './components/BetsFeed.jsx';
@@ -46,7 +46,7 @@ export default function App() {
   useEffect(() => {
     if (!token) return undefined;
 
-    const socket = io(API_URL, {
+    const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       auth: { token },
     });

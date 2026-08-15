@@ -1,4 +1,17 @@
-const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+/**
+ * In Vite dev, use same-origin `/api` (proxied to backend).
+ * In production, set VITE_API_URL or VITE_SOCKET_URL to your backend host.
+ */
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_SOCKET_URL ||
+  (import.meta.env.DEV ? '' : 'http://localhost:3001');
+
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:3001';
+
 const STORAGE_KEY = 'aviator_auth';
 
 export function getStoredAuth() {
@@ -21,11 +34,20 @@ export function clearAuth() {
 async function request(path, { method = 'GET', body, token } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error(
+      'Cannot reach the game server. Start the backend with: npm run dev:backend'
+    );
+  }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || data.message || 'Request failed');
@@ -48,4 +70,6 @@ export const api = {
     request('/api/admin/crash-config', { method: 'POST', token, body: config }),
 };
 
-export { API_URL };
+export { API_BASE, SOCKET_URL };
+/** @deprecated use SOCKET_URL */
+export const API_URL = SOCKET_URL;
