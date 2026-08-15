@@ -439,6 +439,49 @@
   min-height: 1.1em;
 }
 
+.nav-admin {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+  text-decoration: none;
+}
+
+.logout-btn {
+  margin-left: 0.55rem;
+  font: inherit;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid #2e2e2e;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  cursor: pointer;
+}
+
+.center-msg {
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+}
+
+.wait.idle span {
+  display: block;
+  margin-top: 0.55rem;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-weight: 500;
+}
+
+.hud.idle .wait {
+  width: min(360px, 82%);
+}
+
 @keyframes pulse {
   0%,
   100% {

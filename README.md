@@ -37,7 +37,13 @@ Each round generates a server seed. The crash point is derived via HMAC-SHA256. 
 - Round history strip (color-coded multipliers)
 - Demo balance in **ETB** (matches common operator embeds)
 
-## Deploy (Netlify frontend)
+## Auth & Admin
+
+- Register/login at `/login` and `/register` (session + balance in `localStorage` + server JSON store)
+- Default admin: **admin / admin123** → `/admin`
+- Game stays **IDLE** until admin presses **Start Round** or enables **Auto-Run**
+- Admin can switch crash mode: provably fair or manual target multiplier
+
 
 Netlify can host the **frontend only**. Socket.io needs a Node host (Render, Railway, Fly.io, etc.).
 

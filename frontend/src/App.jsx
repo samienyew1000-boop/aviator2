@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { API_URL } from './api.js';
+import { useAuth } from './AuthContext.jsx';
 import BetPanel from './components/BetPanel.jsx';
 import BetsFeed from './components/BetsFeed.jsx';
 import FlightCanvas from './components/FlightCanvas.jsx';
@@ -12,8 +15,6 @@ import {
 } from './demoBets.js';
 import './App.css';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
-
 function historyClass(crashPoint) {
   if (crashPoint >= 10) return 'x10';
   if (crashPoint >= 2) return 'x2';
@@ -21,7 +22,8 @@ function historyClass(crashPoint) {
 }
 
 export default function App() {
-  const [status, setStatus] = useState('WAITING');
+  const { user, token, loading, isAdmin, logout, setUserBalance } = useAuth();
+  const [status, setStatus] = useState('IDLE');
   const [multiplier, setMultiplier] = useState(1);
   const [history, setHistory] = useState([]);
   const [serverBets, setServerBets] = useState([]);
@@ -39,10 +41,15 @@ export default function App() {
   const pointsRef = useRef([]);
   const startedAtRef = useRef(null);
   const roundRef = useRef(0);
-  const prevStatusRef = useRef('WAITING');
+  const prevStatusRef = useRef('IDLE');
 
   useEffect(() => {
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+    if (!token) return undefined;
+
+    const socket = io(API_URL, {
+      transports: ['websocket', 'polling'],
+      auth: { token },
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -54,6 +61,7 @@ export default function App() {
     socket.on('player:update', (p) => {
       setBalance(p.balance);
       setPlayerName(p.name);
+      if (typeof p.balance === 'number') setUserBalance(p.balance);
     });
 
     socket.on('game:state', (state) => {
@@ -78,8 +86,11 @@ export default function App() {
       if (Array.isArray(list)) setServerBets(list);
     });
 
-    return () => socket.disconnect();
-  }, []);
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [token, setUserBalance]);
 
   function applyState(state) {
     const isNewRound = state.roundId !== roundRef.current;
@@ -91,6 +102,11 @@ export default function App() {
     if (state.status === 'RUNNING' && !startedAtRef.current) {
       startedAtRef.current = Date.now();
     }
+    if (state.status === 'IDLE') {
+      startedAtRef.current = null;
+      pointsRef.current = [];
+      setDemoBets([]);
+    }
     if (state.status === 'WAITING') {
       startedAtRef.current = null;
       pointsRef.current = [];
@@ -99,7 +115,6 @@ export default function App() {
       }
     }
     if (state.status === 'RUNNING' && isNewRound) {
-      // Joined mid-flight: still show a populated All Bets list
       const seeded = createDemoBets(state.roundId, 16).map((b) => ({
         ...b,
         appearAt: 0,
@@ -120,7 +135,6 @@ export default function App() {
     setWaitingEndsAt(state.waitingEndsAt || null);
   }
 
-  // Reveal staggered demo bets during waiting
   useEffect(() => {
     if (status !== 'WAITING') return undefined;
     const id = setInterval(() => setDemoTick((n) => n + 1), 200);
@@ -144,7 +158,6 @@ export default function App() {
   const bets = useMemo(() => {
     const visible = visibleDemoBets(demoBets);
     return mergeBets(serverBets, visible);
-    // demoTick forces re-compute as staggered bets appear
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverBets, demoBets, demoTick]);
 
@@ -170,6 +183,16 @@ export default function App() {
     });
   };
 
+  if (loading) {
+    return <div className="shell center-msg">Loading…</div>;
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const canvasStatus =
+    status === 'IDLE' ? 'WAITING' : status === 'CRASHED' ? 'CRASHED' : status;
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -178,9 +201,19 @@ export default function App() {
           <span className={`link ${connected ? 'on' : ''}`}>
             {connected ? 'Online' : 'Offline'}
           </span>
+          {isAdmin && (
+            <Link className="nav-admin" to="/admin">
+              Admin
+            </Link>
+          )}
         </div>
         <div className="balance-block">
-          <span className="label">{playerName || '—'}</span>
+          <span className="label">
+            {playerName || user.displayName}
+            <button type="button" className="logout-btn" onClick={logout}>
+              Logout
+            </button>
+          </span>
           <strong>
             {balance.toFixed(2)} <em>{currency}</em>
           </strong>
@@ -199,11 +232,17 @@ export default function App() {
         <section className="stage">
           <FlightCanvas
             multiplier={multiplier}
-            status={status}
+            status={canvasStatus}
             pointsRef={pointsRef}
             startedAtRef={startedAtRef}
           />
           <div className={`hud ${status.toLowerCase()}`}>
+            {status === 'IDLE' && (
+              <div className="wait idle">
+                <p>WAITING FOR ADMIN TO START</p>
+                <span>Place bets after the admin opens the next round</span>
+              </div>
+            )}
             {status === 'WAITING' && (
               <div className="wait">
                 <p>WAITING FOR NEXT ROUND</p>

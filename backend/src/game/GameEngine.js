@@ -4,8 +4,10 @@ import {
   sha256,
 } from './provablyFair.js';
 import { DemoBetSimulator } from './demoBets.js';
+import { updateBalance } from '../auth/store.js';
 
 export const GameStatus = {
+  IDLE: 'IDLE',
   WAITING: 'WAITING',
   RUNNING: 'RUNNING',
   CRASHED: 'CRASHED',
@@ -14,7 +16,6 @@ export const GameStatus = {
 const TICK_MS = 100;
 const WAITING_MS = 5000;
 const CRASHED_MS = 3000;
-/** Growth rate: multiplier ≈ e^(r * tSeconds) */
 const GROWTH_RATE = 0.06;
 const STARTING_BALANCE = 5000;
 const MIN_BET = 1;
@@ -27,7 +28,7 @@ export class GameEngine {
    */
   constructor(io) {
     this.io = io;
-    this.status = GameStatus.WAITING;
+    this.status = GameStatus.IDLE;
     this.multiplier = 1.0;
     this.crashPoint = 1.0;
     this.roundId = 0;
@@ -42,14 +43,20 @@ export class GameEngine {
     this.history = [];
     /** @type {Map<string, object>} */
     this.players = new Map();
-    /** Active bets for the current round */
     this.bets = [];
     this.betSeq = 0;
     this.demo = new DemoBetSimulator(this);
+
+    /** Admin-controlled lifecycle */
+    this.autoRun = false;
+    this.crashMode = 'provably_fair'; // or 'manual'
+    this.manualCrashPoint = 2.0;
+    this.houseEdge = 0.03;
   }
 
   start() {
-    this.beginWaiting();
+    // Stay idle until admin starts a round or enables auto-run
+    this.goIdle();
   }
 
   stop() {
@@ -57,19 +64,93 @@ export class GameEngine {
     this.clearTimers();
   }
 
-  registerPlayer(socketId, name) {
+  goIdle() {
+    this.clearTimers();
+    this.demo.clear();
+    this.status = GameStatus.IDLE;
+    this.multiplier = 1.0;
+    this.waitingEndsAt = null;
+    this.startedAt = null;
+    this.bets = [];
+    this.broadcast();
+    this.broadcastBets();
+  }
+
+  /**
+   * Admin: start betting window → flight.
+   * @returns {{ ok: boolean, error?: string }}
+   */
+  adminStartRound() {
+    if (this.status === GameStatus.WAITING || this.status === GameStatus.RUNNING) {
+      return { ok: false, error: 'A round is already in progress' };
+    }
+    this.beginWaiting();
+    return { ok: true, roundId: this.roundId };
+  }
+
+  setAutoRun(enabled) {
+    this.autoRun = Boolean(enabled);
+    this.broadcast();
+    if (this.autoRun && this.status === GameStatus.IDLE) {
+      this.beginWaiting();
+    }
+    if (!this.autoRun && this.status === GameStatus.IDLE) {
+      // already idle
+    }
+    return { ok: true, autoRun: this.autoRun };
+  }
+
+  setCrashConfig({ mode, manualCrashPoint } = {}) {
+    if (mode === 'manual' || mode === 'provably_fair') {
+      this.crashMode = mode;
+    }
+    if (manualCrashPoint != null) {
+      const m = Number(manualCrashPoint);
+      if (Number.isFinite(m) && m >= 1.0) {
+        this.manualCrashPoint = Math.floor(m * 100) / 100;
+      }
+    }
+    this.broadcast();
+    return {
+      ok: true,
+      crashMode: this.crashMode,
+      manualCrashPoint: this.manualCrashPoint,
+    };
+  }
+
+  registerPlayer(socketId, { name, userId, balance } = {}) {
     const player = {
       id: socketId,
+      userId: userId || null,
       name: name || `Player${Math.floor(Math.random() * 9000 + 1000)}`,
-      balance: STARTING_BALANCE,
+      balance:
+        balance != null
+          ? Number(balance)
+          : STARTING_BALANCE,
     };
     this.players.set(socketId, player);
     return player;
   }
 
   removePlayer(socketId) {
+    const player = this.players.get(socketId);
+    if (player?.userId) {
+      updateBalance(player.userId, player.balance);
+    }
     this.players.delete(socketId);
-    // Keep placed bets; they resolve with the round
+  }
+
+  syncUserBalance(userId, balance) {
+    for (const player of this.players.values()) {
+      if (player.userId === userId) {
+        player.balance = Number(balance);
+        this.io.to(player.id).emit('player:update', {
+          balance: player.balance,
+          name: player.name,
+          userId: player.userId,
+        });
+      }
+    }
   }
 
   getPlayer(socketId) {
@@ -86,6 +167,8 @@ export class GameEngine {
       nonce: this.nonce,
       currency: CURRENCY,
       waitingEndsAt: this.waitingEndsAt,
+      autoRun: this.autoRun,
+      crashMode: this.crashMode,
       history: this.history.slice(0, 30).map((h) => ({
         roundId: h.roundId,
         crashPoint: h.crashPoint,
@@ -99,6 +182,24 @@ export class GameEngine {
     }
 
     return state;
+  }
+
+  getAdminState() {
+    return {
+      ...this.getPublicState(),
+      crashPoint:
+        this.status === GameStatus.WAITING || this.status === GameStatus.RUNNING
+          ? this.crashPoint
+          : null,
+      manualCrashPoint: this.manualCrashPoint,
+      players: [...this.players.values()].map((p) => ({
+        socketId: p.id,
+        userId: p.userId,
+        name: p.name,
+        balance: p.balance,
+      })),
+      waitingMs: WAITING_MS,
+    };
   }
 
   publicBet(bet) {
@@ -117,13 +218,13 @@ export class GameEngine {
 
   broadcast(event = 'game:state') {
     this.io.emit(event, this.getPublicState());
+    this.io.to('admins').emit('admin:state', this.getAdminState());
   }
 
   broadcastBets() {
-    this.io.emit(
-      'bets:update',
-      this.bets.map((b) => this.publicBet(b))
-    );
+    const list = this.bets.map((b) => this.publicBet(b));
+    this.io.emit('bets:update', list);
+    this.io.to('admins').emit('admin:state', this.getAdminState());
   }
 
   beginWaiting() {
@@ -138,16 +239,19 @@ export class GameEngine {
     this.bets = [];
     this.waitingEndsAt = Date.now() + WAITING_MS;
 
-    const { crashPoint } = calculateCrashPoint(
-      this.serverSeed,
-      this.clientSeed,
-      this.nonce
-    );
-    this.crashPoint = Number(crashPoint.toFixed(2));
+    if (this.crashMode === 'manual') {
+      this.crashPoint = this.manualCrashPoint;
+    } else {
+      const { crashPoint } = calculateCrashPoint(
+        this.serverSeed,
+        this.clientSeed,
+        this.nonce
+      );
+      this.crashPoint = Number(crashPoint.toFixed(2));
+    }
 
     this.broadcast();
     this.demo.onWaiting();
-    // Include seeded demo bets in the next state push
     this.broadcast();
     this.phaseTimer = setTimeout(() => this.beginRunning(), WAITING_MS);
   }
@@ -215,6 +319,7 @@ export class GameEngine {
       serverSeedHash: this.serverSeedHash,
       clientSeed: this.clientSeed,
       nonce: this.nonce,
+      mode: this.crashMode,
     });
     if (this.history.length > 50) this.history.length = 50;
 
@@ -222,15 +327,19 @@ export class GameEngine {
     this.broadcast();
     this.broadcastBets();
 
-    // Push updated balances to each connected player
     for (const [socketId, player] of this.players) {
+      if (player.userId) updateBalance(player.userId, player.balance);
       this.io.to(socketId).emit('player:update', {
         balance: player.balance,
         name: player.name,
+        userId: player.userId,
       });
     }
 
-    this.phaseTimer = setTimeout(() => this.beginWaiting(), CRASHED_MS);
+    this.phaseTimer = setTimeout(() => {
+      if (this.autoRun) this.beginWaiting();
+      else this.goIdle();
+    }, CRASHED_MS);
   }
 
   placeBet(socketId, { amount, slot = 0, autoCashout = null }) {
@@ -264,6 +373,7 @@ export class GameEngine {
     }
 
     player.balance = Number((player.balance - betAmount).toFixed(2));
+    if (player.userId) updateBalance(player.userId, player.balance);
 
     const bet = {
       id: ++this.betSeq,
@@ -319,9 +429,11 @@ export class GameEngine {
     bet.payout = payout;
     if (player) {
       player.balance = Number((player.balance + payout).toFixed(2));
+      if (player.userId) updateBalance(player.userId, player.balance);
       this.io.to(bet.playerId).emit('player:update', {
         balance: player.balance,
         name: player.name,
+        userId: player.userId,
       });
     }
   }
