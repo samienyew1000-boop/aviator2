@@ -17,7 +17,7 @@ function ensureStore() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(USERS_FILE)) {
     const admin = createUserRecord('admin', 'admin123', 'admin');
-    saveUsers([admin]);
+    fs.writeFileSync(USERS_FILE, JSON.stringify([admin], null, 2));
   }
 }
 
@@ -27,7 +27,7 @@ function loadUsers() {
 }
 
 function saveUsers(users) {
-  ensureStore();
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
